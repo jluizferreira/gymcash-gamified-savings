@@ -12,6 +12,7 @@ import 'add_member_screen.dart';
 import 'add_contribution_screen.dart';
 import 'history_screen.dart';
 import '../services/ranking_service.dart';
+import '../widgets/rename_group_dialog.dart';
 
 class GroupScreen extends StatefulWidget {
   final GroupModel group;
@@ -171,6 +172,57 @@ class _GroupScreenState extends State<GroupScreen>
     _load();
   }
 
+  /// Abre diálogo de renomeação e persiste via gateway; erros em SnackBar.
+  Future<void> _renameGroup() async {
+    final newName = await showRenameGroupDialog(
+      context,
+      initialName: _group.name,
+    );
+    if (newName == null || !mounted) return;
+
+    try {
+      final updated = await _storage.renameGroup(_group.id, newName);
+      if (!mounted) return;
+      setState(() => _group = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Nome do grupo atualizado.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } on LocalStorageException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Não foi possível salvar o nome. Tente novamente.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.35)),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,12 +231,23 @@ class _GroupScreenState extends State<GroupScreen>
         backgroundColor: const Color(0xFF0A0A0A),
         foregroundColor: Colors.white,
         elevation: 0,
-        title: Text(_group.name,
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          _group.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Renomear grupo',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: _renameGroup,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabs,
           labelColor: const Color(0xFF00E676),

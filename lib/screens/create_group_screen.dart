@@ -27,14 +27,40 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
-    // Passa o usuário atual → ele entra como membro automaticamente
-    await _storage.createGroup(
-      _controller.text.trim(),
-      creator: widget.currentUser,
-    );
+    try {
+      await _storage.createGroup(
+        _controller.text.trim(),
+        creator: widget.currentUser,
+      );
 
-    if (!mounted) return;
-    Navigator.of(context).pop();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } on LocalStorageException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Não foi possível criar o grupo. Tente novamente.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override

@@ -6,7 +6,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/achievement_model.dart';
-import '../models/rank_model.dart';
 import 'local_storage_service.dart';
 import 'streak_service.dart';
 
@@ -33,7 +32,6 @@ class AchievementService {
     final total        = await _storage.getTotalAccumulated(userId);
     final allContribs  = await _storage.getContributions();
     final allResults   = await _storage.getMonthlyResults();
-    final rank         = RankModel.fromTotal(total);
 
     final userContribs = allContribs.where((c) => c.userId == userId).toList();
     final userWins     = allResults

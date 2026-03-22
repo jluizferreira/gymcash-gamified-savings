@@ -25,14 +25,40 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
-    final updated = await _storage.addMember(
-      widget.groupId,
-      _controller.text.trim(),
-    );
+    try {
+      final updated = await _storage.addMember(
+        widget.groupId,
+        _controller.text.trim(),
+      );
 
-    if (!mounted) return;
-    // Retorna o grupo atualizado para GroupScreen
-    Navigator.of(context).pop<GroupModel>(updated);
+      if (!mounted) return;
+      Navigator.of(context).pop<GroupModel>(updated);
+    } on LocalStorageException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Não foi possível adicionar o membro. Tente novamente.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override

@@ -14,6 +14,10 @@ import 'achievements_screen.dart';
 import 'onboarding_screen.dart';
 import 'create_group_screen.dart';
 import 'group_screen.dart';
+import 'profile_screen.dart';
+import '../views/transaction_list_view.dart';
+import '../widgets/achievement_unlock_toast.dart';
+import '../widgets/rename_group_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
@@ -31,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   RankModel? _rank;
   int       _unlockedCount    = 0;
   bool      _loading           = true;
+  String?   _loadError;
 
   @override
   void initState() {
@@ -41,21 +46,50 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Carrega grupos do armazenamento ───────────────────────────────────────
   // ── Carrega grupos e total acumulado ─────────────────────────────────────
   Future<void> _loadGroups() async {
-    final groups = await _storage.getGroups();
-    final total  = await _storage.getTotalAccumulated(widget.user.id);
-    final streak    = await StreakService(_storage).calculateStreak(widget.user.id);
-    await AchievementService(_storage).checkAndUnlock(widget.user.id);
-    final achService   = AchievementService(_storage);
-    final unlockedCount = await achService.unlockedCount(widget.user.id);
-    final rank         = RankModel.fromTotal(total);
     if (mounted) {
       setState(() {
-        _groups           = groups;
+        _loadError = null;
+        if (_groups.isEmpty) _loading = true;
+      });
+    }
+    try {
+      final groups = await _storage.getGroups();
+      final total = await _storage.getTotalAccumulated(widget.user.id);
+      final streak =
+          await StreakService(_storage).calculateStreak(widget.user.id);
+      final newlyUnlocked =
+          await AchievementService(_storage).checkAndUnlock(widget.user.id);
+      final achService = AchievementService(_storage);
+      final unlockedCount = await achService.unlockedCount(widget.user.id);
+      final rank = RankModel.fromTotal(total);
+      if (!mounted) return;
+      setState(() {
+        _groups = groups;
         _totalAccumulated = total;
-        _streak           = streak;
-        _rank             = rank;
-        _unlockedCount    = unlockedCount;
-        _loading          = false;
+        _streak = streak;
+        _rank = rank;
+        _unlockedCount = unlockedCount;
+        _loading = false;
+        _loadError = null;
+      });
+      if (newlyUnlocked.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          AchievementUnlockToast.showSequence(context, newlyUnlocked);
+        });
+      }
+    } on LocalStorageException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = e.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError =
+            'Não foi possível carregar seus dados. Toque abaixo para tentar de novo.';
       });
     }
   }
@@ -126,6 +160,77 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadGroups();
   }
 
+  /// Renomeia grupo a partir da lista; feedback em português via SnackBar.
+  Future<void> _renameGroup(GroupModel group) async {
+    final newName = await showRenameGroupDialog(
+      context,
+      initialName: group.name,
+    );
+    if (newName == null || !mounted) return;
+
+    try {
+      await _storage.renameGroup(group.id, newName);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Nome do grupo atualizado.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      _loadGroups();
+    } on LocalStorageException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Não foi possível salvar o nome. Tente novamente.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.35)),
+          ),
+        ),
+      );
+    }
+  }
+
+  static const Color _extratoBlue = Color(0xFF448AFF);
+
+  Future<void> _openExtrato() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => TransactionListView(user: widget.user),
+      ),
+    );
+    if (mounted) _loadGroups();
+  }
+
+  Future<void> _openProfile() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfileScreen(user: widget.user),
+      ),
+    );
+    if (mounted) _loadGroups();
+  }
+
   void _showResetDialog() {
     showDialog<void>(
       context: context,
@@ -163,40 +268,110 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
               child: Row(
                 children: [
-                  // Avatar
-                  Container(
-                    width: 42, height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00E676).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: const Color(0xFF00E676).withValues(alpha: 0.3)),
-                    ),
-                    child: Center(
-                      child: Text(widget.user.initials,
-                          style: const TextStyle(color: Color(0xFF00E676),
-                              fontSize: 16, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Olá, ${widget.user.firstName}!',
-                            style: const TextStyle(color: Colors.white,
-                                fontSize: 18, fontWeight: FontWeight.w700)),
-                        const Text('Seus grupos',
-                            style: TextStyle(color: Color(0xFF555555),
-                                fontSize: 12)),
-                      ],
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _openProfile,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                            horizontal: 0,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF00E676)
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(0xFF00E676)
+                                        .withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    widget.user.initials,
+                                    style: const TextStyle(
+                                      color: Color(0xFF00E676),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Olá, ${widget.user.firstName}!',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const Text(
+                                      'Toque para ver o perfil',
+                                      style: TextStyle(
+                                        color: Color(0xFF555555),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: Color(0xFF333333),
+                                size: 22,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Trocar nome',
-                    icon: const Icon(Icons.logout_rounded,
-                        color: Color(0xFF444444)),
-                    onPressed: _showResetDialog,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Extrato',
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(
+                          Icons.receipt_long_outlined,
+                          color: _extratoBlue,
+                        ),
+                        onPressed: _openExtrato,
+                      ),
+                      IconButton(
+                        tooltip: 'Trocar nome',
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(
+                          Icons.logout_rounded,
+                          color: Color(0xFF444444),
+                        ),
+                        onPressed: _showResetDialog,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -239,14 +414,67 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
+            if (!_loading &&
+                _loadError != null &&
+                _groups.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                child: Material(
+                  color: const Color(0xFF2A1F1F),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.orangeAccent.withValues(alpha: 0.9),
+                          size: 22,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _loadError!,
+                            style: const TextStyle(
+                              color: Color(0xFFCCCCCC),
+                              fontSize: 13,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _loadGroups,
+                          child: const Text(
+                            'Atualizar',
+                            style: TextStyle(
+                              color: Color(0xFF00E676),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             // ── Corpo ────────────────────────────────────────────────────────
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(
-                      color: Color(0xFF00E676), strokeWidth: 2))
-                  : _groups.isEmpty
-                      ? _buildEmptyState()
-                      : _buildGroupList(),
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF00E676),
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : _loadError != null && _groups.isEmpty
+                      ? _buildHomeLoadError()
+                      : _groups.isEmpty
+                          ? _buildEmptyState()
+                          : _buildGroupList(),
             ),
           ],
         ),
@@ -264,6 +492,52 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Falha no carregamento inicial (sem grupos em memória).
+  Widget _buildHomeLoadError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 36),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 56,
+              color: Colors.redAccent.withValues(alpha: 0.65),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              _loadError ?? 'Erro ao carregar.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFAAAAAA),
+                fontSize: 15,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton.icon(
+              onPressed: _loadGroups,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Tentar novamente'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF00E676),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 20,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Lista de grupos ────────────────────────────────────────────────────────
   Widget _buildGroupList() {
     return ListView.separated(
@@ -275,6 +549,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return _GroupCard(
           group: group,
           onTap: () => _goToGroup(group),
+          onRename: () => _renameGroup(group),
           onDelete: () => _deleteGroup(group),
         );
       },
@@ -319,11 +594,13 @@ class _HomeScreenState extends State<HomeScreen> {
 class _GroupCard extends StatelessWidget {
   final GroupModel group;
   final VoidCallback onTap;
+  final VoidCallback onRename;
   final VoidCallback onDelete;
 
   const _GroupCard({
     required this.group,
     required this.onTap,
+    required this.onRename,
     required this.onDelete,
   });
 
@@ -357,9 +634,16 @@ class _GroupCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(group.name,
-                      style: const TextStyle(color: Colors.white,
-                          fontSize: 16, fontWeight: FontWeight.w600)),
+                  Text(
+                    group.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 3),
                   Text(
                     count == 0
@@ -371,12 +655,65 @@ class _GroupCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Botão excluir
-            IconButton(
-              tooltip: 'Excluir grupo',
-              icon: const Icon(Icons.delete_outline_rounded,
-                  color: Color(0xFF444444), size: 20),
-              onPressed: onDelete,
+            PopupMenuButton<String>(
+              tooltip: 'Opções do grupo',
+              icon: const Icon(
+                Icons.more_vert_rounded,
+                color: Color(0xFF555555),
+                size: 22,
+              ),
+              color: const Color(0xFF1A1A1A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Color(0xFF2A2A2A)),
+              ),
+              offset: const Offset(0, 40),
+              onSelected: (value) {
+                if (value == 'rename') onRename();
+                if (value == 'delete') onDelete();
+              },
+              itemBuilder: (ctx) => [
+                const PopupMenuItem<String>(
+                  value: 'rename',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.edit_outlined,
+                        color: Color(0xFF00E676),
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Renomear',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        color: Colors.redAccent.withValues(alpha: 0.9),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Excluir grupo',
+                        style: TextStyle(
+                          color: Colors.redAccent.withValues(alpha: 0.95),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const Icon(Icons.chevron_right_rounded,
                 color: Color(0xFF2A2A2A), size: 20),

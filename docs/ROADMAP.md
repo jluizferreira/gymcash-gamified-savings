@@ -42,10 +42,10 @@ O roadmap do GymCash segue três princípios:
 
 **Objetivos:** aumentar a percepção de qualidade do produto e reduzir abandono por fricção.
 
-- [ ] Toast animado ao desbloquear achievement
-- [ ] Dialog comemorativo ao bater a meta do mês ("🎯 Meta atingida!")
-- [ ] Tela de perfil com resumo: streak, patente, conquistas, acumulado
-- [ ] Edição do nome do grupo
+- [x] Toast animado ao desbloquear achievement
+- [x] Dialog comemorativo ao bater a meta do mês ("🎯 Meta atingida!")
+- [x] Tela de perfil com resumo: streak, patente, conquistas, acumulado
+- [x] Edição do nome do grupo
 - [ ] Ordenação da lista de grupos (mais recente / alfabética)
 - [ ] Widget de progresso do usuário atual na aba Ranking
 - [ ] Suporte a tema claro (Light Mode)

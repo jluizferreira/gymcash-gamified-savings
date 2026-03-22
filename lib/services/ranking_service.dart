@@ -7,6 +7,7 @@
 //
 // Chamado em _load() do GroupScreen — silencioso se já fechou o mês.
 
+import '../models/contribution_model.dart';
 import '../models/group_model.dart';
 import '../models/monthly_result_model.dart';
 import '../models/ranking_entry.dart';
@@ -51,7 +52,7 @@ class RankingService {
   Future<void> _closeMonth({
     required GroupModel group,
     required String month,
-    required List contribs,
+    required List<ContributionModel> contribs,
   }) async {
     // Contribuições do mês alvo
     final monthContribs = contribs
@@ -63,11 +64,12 @@ class RankingService {
     // Monta entradas de ranking para cada membro do grupo
     final entries = <RankingEntry>[];
     for (final member in group.members) {
-      dynamic contrib;
-      try {
-        contrib = monthContribs.firstWhere((c) => c.userId == member.id);
-      } catch (_) {
-        contrib = null;
+      ContributionModel? contrib;
+      for (final c in monthContribs) {
+        if (c.userId == member.id) {
+          contrib = c;
+          break;
+        }
       }
       entries.add(RankingEntry(member: member, contribution: contrib));
     }

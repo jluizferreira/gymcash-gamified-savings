@@ -24,17 +24,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
-    // ID gerado via timestamp — mesmo padrão do LocalStorageService
-    final user = UserModel(
-      id:   DateTime.now().microsecondsSinceEpoch.toString(),
-      name: _controller.text.trim(),
-    );
-    await _storage.saveUser(user);
+    try {
+      final user = UserModel(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        name: _controller.text.trim(),
+      );
+      await _storage.saveUser(user);
 
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
-    );
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
+      );
+    } on LocalStorageException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Não foi possível salvar seu nome. Tente novamente.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override

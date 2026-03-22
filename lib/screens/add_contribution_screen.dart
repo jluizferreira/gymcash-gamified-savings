@@ -10,6 +10,8 @@ import '../models/user_model.dart';
 import '../services/local_storage_service.dart';
 import '../services/streak_service.dart';
 import '../services/achievement_service.dart';
+import '../widgets/achievement_unlock_toast.dart';
+import '../widgets/goal_reached_dialog.dart';
 
 class AddContributionScreen extends StatefulWidget {
   final String groupId;
@@ -52,24 +54,70 @@ class _AddContributionScreenState extends State<AddContributionScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
-    final amount = double.parse(
-        _amountController.text.trim().replaceAll(',', '.'));
-    final goal = double.parse(
-        _goalController.text.trim().replaceAll(',', '.'));
+    try {
+      final amount = double.parse(
+          _amountController.text.trim().replaceAll(',', '.'));
+      final goal = double.parse(
+          _goalController.text.trim().replaceAll(',', '.'));
 
-    await _storage.saveContribution(
-      userId:  widget.currentUser.id,
-      groupId: widget.groupId,
-      amount:  amount,
-      goal:    goal,
-    );
+      final saveResult = await _storage.saveContribution(
+        userId: widget.currentUser.id,
+        groupId: widget.groupId,
+        amount: amount,
+        goal: goal,
+      );
 
-    // Recalcula streak e verifica conquistas após salvar
-    await StreakService(_storage).calculateStreak(widget.currentUser.id);
-    await AchievementService(_storage).checkAndUnlock(widget.currentUser.id);
+      if (!mounted) return;
+      if (saveResult.goalJustReached) {
+        HapticFeedback.heavyImpact();
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: true,
+          barrierColor: Colors.black.withValues(alpha: 0.65),
+          builder: (ctx) => const GoalReachedDialog(),
+        );
+      }
 
-    if (!mounted) return;
-    Navigator.of(context).pop(true); // sinaliza que houve mudança
+      await StreakService(_storage).calculateStreak(widget.currentUser.id);
+      final newlyUnlocked =
+          await AchievementService(_storage).checkAndUnlock(widget.currentUser.id);
+
+      if (!mounted) return;
+      if (newlyUnlocked.isNotEmpty) {
+        AchievementUnlockToast.showSequence(context, newlyUnlocked);
+      }
+      Navigator.of(context).pop(true);
+    } on LocalStorageException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Não foi possível salvar a contribuição. Tente novamente.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF2D1A1A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.35)),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
