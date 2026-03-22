@@ -1,6 +1,6 @@
 # Posicionamento e Diferenciais
 
-**GymCash** · Análise de Produto · v1.0
+**GymCash** · Análise de Produto · v1.1
 
 ---
 

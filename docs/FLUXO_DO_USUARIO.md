@@ -1,8 +1,6 @@
 # Jornada do Usuário
 
-**GymCash** · UX Documentation · v1.0
-
----
+**GymCash** · UX Documentation · v1.1
 
 ---
 
@@ -45,6 +43,8 @@ HomeScreen
         │                 │ Digite valor guardado
         │                 │ Digite sua meta do mês
         │                 └── Salva → recalcula streak + achievements
+        │                       ├── Meta atingida? → GoalReachedDialog
+        │                       ├── Achievement desbloqueado? → Toast overlay
         │                       └── Volta para GroupScreen (ranking atualizado)
         │
         ├── [Aba: Membros]     → Lista de membros
@@ -56,6 +56,39 @@ HomeScreen
         │
         └── [Aba: Histórico]   → Meses fechados
               └── [Card do mês] → Expande ranking completo
+```
+
+---
+
+## Fluxo: Perfil do Usuário
+
+```
+HomeScreen
+  │
+  └── [Avatar / nome] → ProfileScreen
+        │ Exibe: nome, acumulado total, streak, patente e progresso
+        │        e atalho para conquistas
+        │
+        └── [Card "Conquistas"] → AchievementsScreen
+              ├── Card de patente atual + barra de progresso
+              └── Lista de achievements (desbloqueados e bloqueados)
+```
+
+---
+
+## Fluxo: Extrato de Transações
+
+```
+HomeScreen
+  │
+  └── [Ícone de extrato 🧾] → TransactionListView
+        │ Lista todas as contribuições do usuário
+        │ ordenadas por mês (mais recente primeiro)
+        │ Exibe: grupo, mês, valor, meta e progresso de cada registro
+        │
+        └── [FAB] "Simular transação"
+              └── Grava contribuição fictícia no primeiro grupo disponível
+                    └── Atualiza a lista
 ```
 
 ---
@@ -100,7 +133,7 @@ App abre
   │
   └── main() lê SharedPreferences
         │
-        ├── Encontrou nome/id salvo?
+        ├── Encontrou usuário salvo?
         │     ├── SIM → HomeScreen (direto, sem onboarding)
         │     └── NÃO → OnboardingScreen
         │
@@ -122,7 +155,7 @@ App abre
 | Com grupos, sem contribuições | Lista de grupos + streak = 0 + Bronze |
 | Com contribuições no mês | Lista + acumulado + streak ativo + patente |
 | Após virada de mês | Idem + histórico fechado disponível no GroupScreen |
-| Conquistas desbloqueadas | Badge de patente atualizado + conquistas novas marcadas |
+| Conquistas desbloqueadas | Badge de patente atualizado + toasts de overlay |
 
 ---
 
@@ -131,20 +164,28 @@ App abre
 ```
 main.dart
   ├── OnboardingScreen
-  │     └── HomeScreen ──────────────────────────────────┐
-  │                                                       │
-  └── HomeScreen                                         │
-        ├── CreateGroupScreen                            │
-        │     └── (pop → HomeScreen recarrega)           │
-        │                                                 │
-        ├── GroupScreen                                   │
-        │     ├── AddContributionScreen                  │
-        │     │     └── (pop → GroupScreen recarrega)    │
-        │     ├── AddMemberScreen                        │
-        │     │     └── (pop → GroupScreen recarrega)    │
-        │     └── HistoryScreen                          │
-        │           └── (pop → GroupScreen)              │
-        │                                                 │
-        └── AchievementsScreen ◄──────────────────────── ┘
+  │     └── HomeScreen
+  │
+  └── HomeScreen ──────────────────────────────────────────┐
+        │                                                   │
+        ├── [avatar] ProfileScreen                          │
+        │     └── AchievementsScreen ◄────────────────────┘│
+        │           └── (pop → ProfileScreen recarrega)     │
+        │                                                    │
+        ├── [extrato] TransactionListView                   │
+        │     └── (pop → HomeScreen recarrega)              │
+        │                                                    │
+        ├── CreateGroupScreen                               │
+        │     └── (pop → HomeScreen recarrega)              │
+        │                                                    │
+        └── GroupScreen                                      │
+              ├── AddContributionScreen                     │
+              │     └── (pop → GroupScreen recarrega)       │
+              ├── AddMemberScreen                           │
+              │     └── (pop → GroupScreen recarrega)       │
+              └── HistoryScreen                             │
+                    └── (pop → GroupScreen)                 │
+                                                            │
+        [badge patente] → AchievementsScreen ◄─────────────┘
               └── (pop → HomeScreen recarrega)
 ```

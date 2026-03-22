@@ -1,10 +1,10 @@
 # Especificação de Requisitos
 
-**GymCash** · Documento de Requisitos · v1.0
+**GymCash** · Documento de Requisitos · v1.1
 
 ---
 
-> Este documento especifica os requisitos funcionais e não funcionais do GymCash v1.0. Serve como contrato de comportamento esperado do sistema e referência para desenvolvimento, testes e avaliação de qualidade.
+> Este documento especifica os requisitos funcionais e não funcionais do GymCash v1.1. Serve como contrato de comportamento esperado do sistema e referência para desenvolvimento, testes e avaliação de qualidade.
 
 ---
 
@@ -15,8 +15,9 @@
 | ID | Requisito |
 |---|---|
 | RF01.1 | O sistema deve permitir que o usuário cadastre seu nome na primeira abertura do app |
-| RF01.2 | O sistema deve persistir o nome localmente e pular o onboarding nas aberturas seguintes |
+| RF01.2 | O sistema deve persistir o nome e ID localmente e pular o onboarding nas aberturas seguintes |
 | RF01.3 | O sistema deve permitir que o usuário redefina seu nome, limpando os dados salvos |
+| RF01.4 | O sistema deve exibir uma tela de perfil com resumo de acumulado, streak, patente e conquistas do usuário |
 
 ### RF02 — Gestão de Grupos
 
@@ -27,7 +28,8 @@
 | RF02.3 | O usuário deve poder adicionar novos membros a um grupo pelo nome |
 | RF02.4 | O usuário deve poder remover membros de um grupo |
 | RF02.5 | O usuário deve poder excluir um grupo inteiro, incluindo todos os seus dados |
-| RF02.6 | A tela principal deve listar todos os grupos com o número de membros de cada um |
+| RF02.6 | O usuário deve poder renomear um grupo a partir da HomeScreen ou da tela do grupo |
+| RF02.7 | A tela principal deve listar todos os grupos com o número de membros de cada um |
 
 ### RF03 — Contribuições Mensais
 
@@ -37,7 +39,9 @@
 | RF03.2 | O usuário deve definir uma meta individual junto com cada contribuição |
 | RF03.3 | O sistema deve permitir editar a contribuição do mês atual |
 | RF03.4 | O sistema deve garantir no máximo uma contribuição por usuário por grupo por mês |
-| RF03.5 | O campo de referência deve exibir o mês atual no formato `YYYY-MM` |
+| RF03.5 | O campo de referência deve exibir o mês atual formatado |
+| RF03.6 | O sistema deve detectar quando o usuário atinge ou supera sua meta e exibir um diálogo comemorativo animado |
+| RF03.7 | O diálogo de meta atingida deve ser exibido apenas uma vez por contribuição, mesmo que o valor seja editado novamente |
 
 ### RF04 — Ranking (Sprint)
 
@@ -70,33 +74,43 @@
 | RF06.6 | O histórico deve ser exibido em ordem cronológica decrescente (mais recente primeiro) |
 | RF06.7 | Cada mês no histórico deve ser expansível para revelar o ranking completo |
 
-### RF07 — Streak
+### RF07 — Extrato de Transações
 
 | ID | Requisito |
 |---|---|
-| RF07.1 | O sistema deve calcular a sequência de meses consecutivos com contribuição `> 0` |
-| RF07.2 | O streak deve considerar todos os grupos do usuário de forma unificada |
-| RF07.3 | Se o usuário pular um mês, o streak deve ser resetado para a sequência mais recente |
-| RF07.4 | O streak deve ser atualizado sempre que o usuário registrar ou editar uma contribuição |
-| RF07.5 | O streak deve ser exibido na HomeScreen com feedback visual proporcional ao valor |
+| RF07.1 | O sistema deve exibir um extrato com todas as contribuições do usuário, ordenadas por mês (mais recente primeiro) |
+| RF07.2 | O extrato deve exibir o nome do grupo, o mês de referência, o valor guardado, a meta e o progresso de cada registro |
+| RF07.3 | O extrato deve ser acessível a partir da HomeScreen |
+| RF07.4 | O extrato deve permitir simular uma nova transação para fins de teste |
 
-### RF08 — Patentes
-
-| ID | Requisito |
-|---|---|
-| RF08.1 | O sistema deve calcular a patente atual com base no total acumulado do usuário |
-| RF08.2 | As patentes devem ser: Bronze (R$ 0), Prata (R$ 100), Ouro (R$ 300), Platina (R$ 700), Diamante (R$ 1.500) |
-| RF08.3 | A patente atual deve ser exibida na HomeScreen com um indicador de progresso para a próxima |
-| RF08.4 | A tela de conquistas deve exibir a patente com barra de progresso detalhada |
-
-### RF09 — Achievements
+### RF08 — Streak
 
 | ID | Requisito |
 |---|---|
-| RF09.1 | O sistema deve verificar e desbloquear conquistas ao registrar contribuição e ao abrir o app |
-| RF09.2 | Conquistas desbloqueadas devem registrar a data e hora do desbloqueio |
-| RF09.3 | Conquistas bloqueadas devem ser exibidas com cadeado e sem spoiler da condição atingida |
-| RF09.4 | O sistema deve incluir no mínimo 11 conquistas cobrindo: depósitos, streaks, vitórias, metas e patentes |
+| RF08.1 | O sistema deve calcular a sequência de meses consecutivos com contribuição `> 0` |
+| RF08.2 | O streak deve considerar todos os grupos do usuário de forma unificada |
+| RF08.3 | Se o usuário pular um mês, o streak deve ser resetado para a sequência mais recente |
+| RF08.4 | O streak deve ser atualizado sempre que o usuário registrar ou editar uma contribuição |
+| RF08.5 | O streak deve ser exibido na HomeScreen com feedback visual proporcional ao valor |
+
+### RF09 — Patentes
+
+| ID | Requisito |
+|---|---|
+| RF09.1 | O sistema deve calcular a patente atual com base no total acumulado do usuário |
+| RF09.2 | As patentes devem ser: Bronze (R$ 0), Prata (R$ 100), Ouro (R$ 300), Platina (R$ 700), Diamante (R$ 1.500) |
+| RF09.3 | A patente atual deve ser exibida na HomeScreen com um indicador de progresso para a próxima |
+| RF09.4 | A tela de conquistas deve exibir a patente com barra de progresso detalhada |
+
+### RF10 — Achievements
+
+| ID | Requisito |
+|---|---|
+| RF10.1 | O sistema deve verificar e desbloquear conquistas ao registrar contribuição e ao abrir o app |
+| RF10.2 | Conquistas desbloqueadas devem registrar a data e hora do desbloqueio |
+| RF10.3 | Conquistas bloqueadas devem ser exibidas com cadeado e sem spoiler da condição atingida |
+| RF10.4 | O sistema deve incluir no mínimo 11 conquistas cobrindo: depósitos, streaks, vitórias, metas e patentes |
+| RF10.5 | Ao desbloquear uma conquista, o sistema deve exibir um toast animado em overlay que persiste mesmo após troca de tela |
 
 ---
 
@@ -121,6 +135,7 @@
 | RNF02.4 | O app deve operar completamente offline, sem dependência de conexão à internet |
 | RNF02.5 | A interface deve dar feedback visual imediato para todas as ações do usuário |
 | RNF02.6 | O app deve suportar o tema escuro como padrão |
+| RNF02.7 | Erros de armazenamento devem ser exibidos ao usuário em português com mensagem clara e opção de retry |
 
 ### RNF03 — Privacidade e Segurança
 
@@ -140,6 +155,7 @@
 | RNF04.3 | Novos tipos de achievement devem poder ser adicionados apenas em `AchievementModel.all`, sem alterar o service |
 | RNF04.4 | Novas patentes devem poder ser adicionadas apenas em `RankModel.ranks` |
 | RNF04.5 | O código deve seguir a separação models / services / screens sem lógica de negócio nas telas |
+| RNF04.6 | Operações de escrita devem retornar Result Objects tipados (`ContributionSaveResult`) em vez de lançar exceções para fluxos de sucesso |
 
 ### RNF05 — Compatibilidade
 

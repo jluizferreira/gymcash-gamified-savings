@@ -134,6 +134,8 @@ lib/
 ---
 
 ## Como Executar
+--.
+**Pré-requisitos:** Flutter SDK `>=3.3.0` · Android SDK API 23+
 
 **Pré-requisitos:** Flutter SDK `>=3.3.0` · Android SDK API 23+
 
@@ -181,6 +183,9 @@ flutter build appbundle --release
 | [`docs/DIFERENCIAIS.md`](./docs/DIFERENCIAIS.md) | Posicionamento e análise competitiva |
 
 ---
+
+
+
 
 ## Sobre o Desenvolvedor
 

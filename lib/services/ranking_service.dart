@@ -1,11 +1,7 @@
 // lib/services/ranking_service.dart
 //
-// Responsável por:
-//   1. Detectar se o mês virou desde o último fechamento
-//   2. Calcular o ranking do mês anterior
-//   3. Salvar o MonthlyResult
-//
-// Chamado em _load() do GroupScreen — silencioso se já fechou o mês.
+// Detecta se o mês virou, calcula o ranking do mês anterior e salva o resultado.
+// Chamado em _load() do GroupScreen — silencioso se o mês já foi fechado.
 
 import '../models/contribution_model.dart';
 import '../models/group_model.dart';
@@ -18,27 +14,24 @@ class RankingService {
 
   RankingService(this._storage);
 
-  // ── Ponto de entrada: chame ao abrir o GroupScreen ────────────────────────
-  // Verifica se há mês(es) para fechar e salva os resultados pendentes.
+  // ── Verifica e fecha meses pendentes ──────────────────────────────────────
   // Retorna true se fechou algum mês (para forçar reload na UI).
   Future<bool> checkAndCloseMonths(GroupModel group) async {
-    final currentMonth = _currentMonth();
-    final existing     = await _storage.getMonthlyResults(groupId: group.id);
-    final closedMonths = existing.map((r) => r.month).toSet();
+    final currentMonth  = _currentMonth();
+    final existing      = await _storage.getMonthlyResults(groupId: group.id);
+    final closedMonths  = existing.map((r) => r.month).toSet();
 
-    // Busca todos os meses com contribuições neste grupo
-    final allContribs = await _storage.getContributions();
+    final allContribs   = await _storage.getContributions(); // sem parâmetro
     final groupContribs = allContribs
         .where((c) => c.groupId == group.id)
         .toList();
 
-    // Meses únicos que têm contribuições (exceto o mês atual)
     final monthsToClose = groupContribs
         .map((c) => c.month)
         .toSet()
         .where((m) => m != currentMonth && !closedMonths.contains(m))
         .toList()
-      ..sort(); // ordem cronológica
+      ..sort();
 
     if (monthsToClose.isEmpty) return false;
 
@@ -54,33 +47,23 @@ class RankingService {
     required String month,
     required List<ContributionModel> contribs,
   }) async {
-    // Contribuições do mês alvo
-    final monthContribs = contribs
-        .where((c) => c.month == month)
-        .toList();
-
+    final monthContribs = contribs.where((c) => c.month == month).toList();
     if (monthContribs.isEmpty) return;
 
-    // Monta entradas de ranking para cada membro do grupo
     final entries = <RankingEntry>[];
     for (final member in group.members) {
       ContributionModel? contrib;
       for (final c in monthContribs) {
-        if (c.userId == member.id) {
-          contrib = c;
-          break;
-        }
+        if (c.userId == member.id) { contrib = c; break; }
       }
       entries.add(RankingEntry(member: member, contribution: contrib));
     }
 
-    // Ordena: maior progresso primeiro; empate → nome
     entries.sort((a, b) {
       final diff = b.progress.compareTo(a.progress);
       return diff != 0 ? diff : a.member.name.compareTo(b.member.name);
     });
 
-    // Monta snapshots com posição
     final snapshots = entries.asMap().entries.map((e) {
       return RankingSnapshot(
         userId:   e.value.member.id,
@@ -90,7 +73,6 @@ class RankingService {
       );
     }).toList();
 
-    // Vencedor = maior progresso (só conta se tiver contribuído)
     final winner = entries.isNotEmpty && entries.first.contribution != null
         ? entries.first
         : null;
@@ -104,7 +86,7 @@ class RankingService {
       winnerName: winner?.member.name,
     );
 
-    await _storage.saveMonthlyResult(result);
+    await _storage.saveMonthlyResult(result); // método agora existe
   }
 
   String _currentMonth() {

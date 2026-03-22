@@ -1,6 +1,9 @@
 // lib/widgets/goal_reached_dialog.dart
 import 'package:flutter/material.dart';
 
+/// Exibe um diálogo animado ao atingir a meta do mês.
+/// Pode ser chamado como widget via [showDialog] ou pela função de conveniência
+/// [showGoalReachedDialog].
 class GoalReachedDialog extends StatefulWidget {
   const GoalReachedDialog({super.key});
 
@@ -30,7 +33,7 @@ class _GoalReachedDialogState extends State<GoalReachedDialog>
   @override
   Widget build(BuildContext context) {
     const accent = Color(0xFF448AFF);
-    
+
     return AlertDialog(
       backgroundColor: const Color(0xFF0A0A0A),
       shape: RoundedRectangleBorder(
@@ -52,18 +55,21 @@ class _GoalReachedDialogState extends State<GoalReachedDialog>
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: accent.withOpacity(0.1),
+                  color: accent.withValues(alpha: 0.1), // corrigido
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.emoji_events_rounded, 
-                                 color: accent, size: 60),
+                child: const Icon(Icons.emoji_events_rounded,
+                    color: accent, size: 60),
               ),
             ),
           ),
           const SizedBox(height: 24),
           const Text(
             'META ATINGIDA!',
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           const Text(
@@ -79,15 +85,26 @@ class _GoalReachedDialogState extends State<GoalReachedDialog>
               style: ElevatedButton.styleFrom(
                 backgroundColor: accent,
                 foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('Continuar Poupando', 
-                               style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Continuar Poupando',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+/// Função de conveniência para abrir o diálogo de meta atingida.
+Future<void> showGoalReachedDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: Colors.black.withValues(alpha: 0.65),
+    builder: (_) => const GoalReachedDialog(),
+  );
 }

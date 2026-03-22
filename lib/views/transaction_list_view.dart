@@ -11,15 +11,15 @@ import '../models/user_model.dart';
 import '../services/local_storage_service.dart';
 import '../widgets/goal_reached_dialog.dart';
 
-/// Azul de destaque e fundo preto — identidade minimalista solicitada.
+/// Azul de destaque e fundo preto — identidade minimalista.
 abstract final class _TxColors {
   static const background = Color(0xFF0A0A0A);
-  static const surface = Color(0xFF161616);
-  static const border = Color(0xFF222222);
-  static const accent = Color(0xFF448AFF);
-  static const accentDim = Color(0xFF2962FF);
-  static const textMuted = Color(0xFF555555);
-  static const textSoft = Color(0xFF888888);
+  static const surface    = Color(0xFF161616);
+  static const border     = Color(0xFF222222);
+  static const accent     = Color(0xFF448AFF);
+  static const accentDim  = Color(0xFF2962FF);
+  static const textMuted  = Color(0xFF555555);
+  static const textSoft   = Color(0xFF888888);
 }
 
 /// Tela com lista de transações do [user], persistidas via [LocalStorageService].
@@ -36,8 +36,8 @@ class _TransactionListViewState extends State<TransactionListView> {
   final LocalStorageService _storage = LocalStorageService();
 
   List<ContributionModel> _transactions = [];
-  Map<String, String> _groupNames = {};
-  bool _loading = true;
+  Map<String, String>     _groupNames   = {};
+  bool                    _loading      = true;
 
   @override
   void initState() {
@@ -45,44 +45,32 @@ class _TransactionListViewState extends State<TransactionListView> {
     _loadTransactions();
   }
 
-  /// Carrega contribuições do usuário e resolve nomes dos grupos para exibição.
-  /// Em falha de I/O ou JSON, exibe SnackBar com mensagem amigável.
   Future<void> _loadTransactions() async {
     setState(() => _loading = true);
     try {
-      final all = await _storage.getContributions();
+      final all    = await _storage.getContributions();
       final groups = await _storage.getGroups();
-      final names = {
-        for (final g in groups) g.id: g.name,
-      };
-      final mine = all
+      final names  = {for (final g in groups) g.id: g.name};
+      final mine   = all
           .where((c) => c.userId == widget.user.id)
           .toList()
         ..sort((a, b) => b.month.compareTo(a.month));
+
       if (!mounted) return;
       setState(() {
         _transactions = mine;
-        _groupNames = names;
-        _loading = false;
+        _groupNames   = names;
+        _loading      = false;
       });
     } on LocalStorageException catch (e) {
       if (!mounted) return;
-      setState(() {
-        _transactions = [];
-        _groupNames = {};
-        _loading = false;
-      });
+      setState(() { _transactions = []; _groupNames = {}; _loading = false; });
       _showSnack(e.message, isError: true);
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _transactions = [];
-        _loading = false;
-      });
-      _showSnack(
-        'Não foi possível carregar as transações. Tente novamente.',
-        isError: true,
-      );
+      setState(() { _transactions = []; _loading = false; });
+      _showSnack('Não foi possível carregar as transações. Tente novamente.',
+          isError: true);
     }
   }
 
@@ -105,7 +93,6 @@ class _TransactionListViewState extends State<TransactionListView> {
     );
   }
 
-  /// Grava uma contribuição fictícia no primeiro grupo disponível para testar o fluxo.
   Future<void> _simulateNewTransaction() async {
     try {
       final groups = await _storage.getGroups();
@@ -121,15 +108,15 @@ class _TransactionListViewState extends State<TransactionListView> {
       final bump = DateTime.now().second % 7 * 12.5;
 
       final saveResult = await _storage.saveContribution(
-        userId: widget.user.id,
+        userId:  widget.user.id,
         groupId: target.id,
-        amount: 50 + bump,
-        goal: 200,
+        amount:  50 + bump,
+        goal:    200,
       );
 
       if (!mounted) return;
       if (saveResult.goalJustReached) {
-        await showGoalReachedDialog(context);
+        await showGoalReachedDialog(context); // função de conveniência
       }
       if (!mounted) return;
       _showSnack('Transação simulada salva com sucesso.');
@@ -146,9 +133,9 @@ class _TransactionListViewState extends State<TransactionListView> {
     }
   }
 
-  /// Escolhe um grupo que já tenha contribuição no mês atual, senão o primeiro da lista.
+  /// Escolhe um grupo que já tenha contribuição no mês atual; senão o primeiro.
   GroupModel _pickGroupForSimulation(List<GroupModel> groups) {
-    final month = ContributionModel.currentMonth();
+    final month = ContributionModel.currentMonth(); // chamada estática correta
     for (final g in groups) {
       final has = _transactions.any(
         (t) => t.groupId == g.id && t.month == month,
@@ -200,22 +187,14 @@ class _TransactionListViewState extends State<TransactionListView> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 36,
-            height: 36,
+          const SizedBox(
+            width: 36, height: 36,
             child: CircularProgressIndicator(
-              color: _TxColors.accent,
-              strokeWidth: 2.5,
-            ),
+                color: _TxColors.accent, strokeWidth: 2.5),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Carregando transações…',
-            style: TextStyle(
-              color: _TxColors.textSoft,
-              fontSize: 14,
-            ),
-          ),
+          const Text('Carregando transações…',
+              style: TextStyle(color: _TxColors.textSoft, fontSize: 14)),
         ],
       ),
     );
@@ -229,8 +208,7 @@ class _TransactionListViewState extends State<TransactionListView> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 72, height: 72,
               decoration: BoxDecoration(
                 color: _TxColors.surface,
                 borderRadius: BorderRadius.circular(20),
@@ -243,23 +221,17 @@ class _TransactionListViewState extends State<TransactionListView> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Nenhuma transação',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            const Text('Nenhuma transação',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             const Text(
               'Quando você registrar contribuições nos grupos,\nelas aparecerão aqui.\nUse o botão para simular uma transação.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: _TxColors.textMuted,
-                fontSize: 14,
-                height: 1.6,
-              ),
+                  color: _TxColors.textMuted, fontSize: 14, height: 1.6),
             ),
           ],
         ),
@@ -278,12 +250,9 @@ class _TransactionListViewState extends State<TransactionListView> {
         itemCount: _transactions.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
-          final tx = _transactions[index];
+          final tx        = _transactions[index];
           final groupName = _groupNames[tx.groupId] ?? 'Grupo';
-          return _TransactionTile(
-            contribution: tx,
-            groupName: groupName,
-          );
+          return _TransactionTile(contribution: tx, groupName: groupName);
         },
       ),
     );
@@ -297,7 +266,7 @@ class _TransactionTile extends StatelessWidget {
   });
 
   final ContributionModel contribution;
-  final String groupName;
+  final String            groupName;
 
   String _money(double v) => 'R\$ ${v.toStringAsFixed(2)}';
 
@@ -314,70 +283,47 @@ class _TransactionTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 44, height: 44,
             decoration: BoxDecoration(
               color: _TxColors.accentDim.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _TxColors.accent.withValues(alpha: 0.25),
-              ),
+                  color: _TxColors.accent.withValues(alpha: 0.25)),
             ),
-            child: Icon(
-              Icons.trending_up_rounded,
-              color: _TxColors.accent,
-              size: 22,
-            ),
+            child: const Icon(Icons.trending_up_rounded,
+                color: _TxColors.accent, size: 22),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  groupName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
+                Text(groupName,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15)),
                 const SizedBox(height: 4),
-                Text(
-                  contribution.month,
-                  style: const TextStyle(
-                    color: _TxColors.textMuted,
-                    fontSize: 12,
-                  ),
-                ),
+                Text(contribution.month,
+                    style: const TextStyle(
+                        color: _TxColors.textMuted, fontSize: 12)),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Text(
-                      _money(contribution.amount),
-                      style: const TextStyle(
-                        color: _TxColors.accent,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      '  ·  meta ${_money(contribution.goal)}',
-                      style: const TextStyle(
-                        color: _TxColors.textSoft,
-                        fontSize: 13,
-                      ),
-                    ),
+                    Text(_money(contribution.amount),
+                        style: const TextStyle(
+                            color: _TxColors.accent,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16)),
+                    Text('  ·  meta ${_money(contribution.goal)}',
+                        style: const TextStyle(
+                            color: _TxColors.textSoft, fontSize: 13)),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  'Progresso: ${contribution.progressLabel}',
-                  style: const TextStyle(
-                    color: _TxColors.textMuted,
-                    fontSize: 12,
-                  ),
-                ),
+                Text('Progresso: ${contribution.progressLabel}',
+                    style: const TextStyle(
+                        color: _TxColors.textMuted, fontSize: 12)),
               ],
             ),
           ),

@@ -25,21 +25,19 @@ class AchievementService {
     }).toList();
   }
 
-  // ── Ponto principal: verifica e desbloqueia o que for elegível ────────────
+  // ── Verifica e desbloqueia conquistas elegíveis ────────────────────────────
   // Retorna IDs das conquistas recém-desbloqueadas nesta chamada.
   Future<List<String>> checkAndUnlock(String userId) async {
-    final streak       = await StreakService(_storage).calculateStreak(userId);
-    final total        = await _storage.getTotalAccumulated(userId);
-    final allContribs  = await _storage.getContributions();
-    final allResults   = await _storage.getMonthlyResults();
+    final streak      = await StreakService(_storage).calculateStreak(userId);
+    final total       = await _storage.getTotalAccumulated(userId);
+    final allContribs = await _storage.getContributions();       // sem parâmetro
+    final allResults  = await _storage.getMonthlyResults();      // sem parâmetro
 
     final userContribs = allContribs.where((c) => c.userId == userId).toList();
-    final userWins     = allResults
-        .where((r) => r.winnerId == userId)
-        .length;
-    final goalReached  = userContribs.any((c) => c.goal > 0 && c.amount >= c.goal);
+    final userWins     = allResults.where((r) => r.winnerId == userId).length;
+    final goalReached  =
+        userContribs.any((c) => c.goal > 0 && c.amount >= c.goal);
 
-    // Mapa de id → se deve estar desbloqueado
     final shouldUnlock = <String, bool>{
       'first_deposit': userContribs.any((c) => c.amount > 0),
       'streak_3':      streak >= 3,
@@ -54,21 +52,20 @@ class AchievementService {
       'rank_diamond':  total >= 1500,
     };
 
-    final saved    = await _loadSaved(userId);
+    final saved         = await _loadSaved(userId);
     final newlyUnlocked = <String>[];
 
     for (final entry in shouldUnlock.entries) {
-      if (!entry.value) continue; // condição não atingida
+      if (!entry.value) continue;
 
       final alreadySaved = saved[entry.key];
       final alreadyDone  = alreadySaved?['isUnlocked'] as bool? ?? false;
-      if (alreadyDone) continue; // já estava desbloqueado
+      if (alreadyDone) continue;
 
-      // Desbloqueia agora
       saved[entry.key] = {
-        'id':          entry.key,
-        'isUnlocked':  true,
-        'unlockedAt':  DateTime.now().toIso8601String(),
+        'id':         entry.key,
+        'isUnlocked': true,
+        'unlockedAt': DateTime.now().toIso8601String(),
       };
       newlyUnlocked.add(entry.key);
     }
@@ -86,7 +83,7 @@ class AchievementService {
     return all.where((a) => a.isUnlocked).length;
   }
 
-  // ── Persistência: salva por userId para isolar entre usuários ────────────
+  // ── Persistência por userId ───────────────────────────────────────────────
   String _keyFor(String userId) => '${_keyAchievements}_$userId';
 
   Future<Map<String, Map<String, dynamic>>> _loadSaved(String userId) async {

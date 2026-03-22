@@ -1,6 +1,6 @@
 # Regras de Negócio
 
-**GymCash** · Especificação Funcional · v1.0
+**GymCash** · Especificação Funcional · v1.1
 
 ---
 
@@ -28,6 +28,19 @@ saveContribution(userId, groupId, amount, goal)
 | `amount` | `double` | Valor guardado no mês. Nunca exibido no ranking. |
 | `goal` | `double` | Meta individual do usuário para o mês. Nunca exibida no ranking. |
 | `month` | `String` | Formato `YYYY-MM`. Sempre o mês em que o registro foi criado. |
+| `isGoalNotified` | `bool` | Indica se o diálogo de meta atingida já foi exibido para este registro. Garante disparo único mesmo que o valor seja editado novamente após atingir a meta. |
+
+### Lógica de meta atingida
+
+```
+saveContribution(amount, goal)
+  ├── amount >= goal E isGoalNotified == false E goal > 0?
+  │     ├── SIM → goalJustReached = true, persiste isGoalNotified = true
+  │     └── NÃO → goalJustReached = false, isGoalNotified inalterado
+  └── Retorna ContributionSaveResult { contribution, goalJustReached }
+```
+
+A UI exibe o diálogo animado apenas quando `goalJustReached == true` no resultado retornado.
 
 ---
 
@@ -160,9 +173,10 @@ RankModel.fromTotal(double total)
 
 ### Gatilhos de verificação
 
-O sistema verifica conquistas em dois momentos:
-1. **Imediatamente após `saveContribution`** — captura conquistas baseadas em contribuição
-2. **Ao carregar a `HomeScreen`** — captura conquistas baseadas em histórico (vitórias, patentes)
+O sistema verifica conquistas em três momentos:
+1. **Imediatamente após `saveContribution`** (`AddContributionScreen`) — captura conquistas baseadas em contribuição e meta
+2. **Ao carregar a `HomeScreen`** — captura conquistas baseadas em histórico acumulado (vitórias, patentes, streak)
+3. **Ao carregar a `ProfileScreen`** — garante que conquistas desbloqueadas durante a sessão sejam refletidas no perfil
 
 ### Regras de desbloqueio
 
@@ -193,7 +207,8 @@ O sistema verifica conquistas em dois momentos:
 
 | Operação | Comportamento |
 |---|---|
-| Excluir grupo | Remove o grupo **e todas as suas contribuições**. Resultados mensais fechados também são removidos. |
+| Excluir grupo | Remove o registro do grupo da lista de grupos. Contribuições e resultados mensais associados **permanecem no armazenamento** mas ficam órfãos — não são mais acessíveis pela UI. |
 | Remover membro | Remove o membro do grupo. Contribuições históricas **são preservadas** para integridade do histórico fechado. |
 | Criar grupo | O criador é adicionado automaticamente como primeiro membro. |
+| Renomear grupo | Atualiza o nome no registro do grupo. Não afeta membros, contribuições ou resultados históricos. |
 | Adicionar membro duplicado | Verificado por `userId`. Operação silenciosamente ignorada. |
