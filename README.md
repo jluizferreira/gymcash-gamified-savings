@@ -63,7 +63,35 @@ A privacidade continua sendo o núcleo: o ranking exibe apenas porcentagens de p
 
 ## Estrutura do Projeto (v1.1)
 
-lib/├── models/│   ├── contribution_save_result.dart # DTO para retorno de persistência│   └── ... (user, group, contribution, achievement, rank)├── services/│   ├── local_storage_service.dart    # Gateway de dados (Single Source of Truth)│   └── ... (ranking, streak, achievement)├── widgets/                          # Componentes reutilizáveis e atômicos│   ├── achievement_unlock_toast.dart # Overlay animado│   ├── goal_reached_dialog.dart      # Alerta comemorativo 100%│   └── rename_group_dialog.dart      # Diálogo de edição de nome└── screens/├── transaction_list_view.dart    # Visão de extrato detalhado├── profile_screen.dart           # Dashboard de evolução do usuário└── ... (home, group, add_contribution)
+Aqui está a estrutura de pastas organizada e padronizada, pronta para ser copiada para o seu projeto:
+
+Plaintext
+lib/
+├── models/
+│   ├── contribution_save_result.dart
+│   ├── user.dart
+│   ├── group.dart
+│   ├── contribution.dart
+│   ├── achievement.dart
+│   └── rank.dart
+│
+├── services/
+│   ├── local_storage_service.dart
+│   ├── ranking_service.dart
+│   ├── streak_service.dart
+│   └── achievement_service.dart
+│
+├── widgets/
+│   ├── achievement_unlock_toast.dart
+│   ├── goal_reached_dialog.dart
+│   └── rename_group_dialog.dart
+│
+└── screens/
+    ├── transaction_list_view.dart
+    ├── profile_screen.dart
+    ├── home_screen.dart
+    ├── group_screen.dart
+    └── add_contribution_screen.dart
 ---
 
 ## Como Executar
