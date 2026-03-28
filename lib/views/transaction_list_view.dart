@@ -1,28 +1,26 @@
 // lib/views/transaction_list_view.dart
 //
-// Lista transações (contribuições) do usuário com estados de carregamento e vazio.
-// FAB simula nova transação; erros do armazenamento exibem SnackBar em português.
+// Lista contribuições do usuário com estados de carregamento e vazio.
+// Erros do armazenamento exibem SnackBar em português.
 
 import 'package:flutter/material.dart';
 
 import '../models/contribution_model.dart';
-import '../models/group_model.dart';
 import '../models/user_model.dart';
 import '../services/local_storage_service.dart';
-import '../widgets/goal_reached_dialog.dart';
 
-/// Azul de destaque e fundo preto — identidade minimalista.
+/// Paleta interna da tela de extrato — Deep Black & Electric Blue.
 abstract final class _TxColors {
   static const background = Color(0xFF0A0A0A);
-  static const surface = Color(0xFF161616);
-  static const border = Color(0xFF222222);
-  static const accent = Color(0xFF448AFF);
-  static const accentDim = Color(0xFF2962FF);
-  static const textMuted = Color(0xFF555555);
-  static const textSoft = Color(0xFF888888);
+  static const surface    = Color(0xFF161616);
+  static const border     = Color(0xFF222222);
+  static const accent     = Color(0xFF448AFF);
+  static const accentDim  = Color(0xFF2962FF);
+  static const textMuted  = Color(0xFF555555);
+  static const textSoft   = Color(0xFF888888);
 }
 
-/// Tela com lista de transações do [user], persistidas via [LocalStorageService].
+/// Tela com lista de contribuições do [user], persistidas via [LocalStorageService].
 class TransactionListView extends StatefulWidget {
   const TransactionListView({super.key, required this.user});
 
@@ -48,34 +46,38 @@ class _TransactionListViewState extends State<TransactionListView> {
   Future<void> _loadTransactions() async {
     setState(() => _loading = true);
     try {
-      final all = await _storage.getContributions();
+      final all    = await _storage.getContributions();
       final groups = await _storage.getGroups();
-      final names = {for (final g in groups) g.id: g.name};
-      final mine = all.where((c) => c.userId == widget.user.id).toList()
+      final names  = {for (final g in groups) g.id: g.name};
+      final mine   = all
+          .where((c) => c.userId == widget.user.id)
+          .toList()
         ..sort((a, b) => b.month.compareTo(a.month));
 
       if (!mounted) return;
       setState(() {
         _transactions = mine;
-        _groupNames = names;
-        _loading = false;
+        _groupNames   = names;
+        _loading      = false;
       });
     } on LocalStorageException catch (e) {
       if (!mounted) return;
       setState(() {
         _transactions = [];
-        _groupNames = {};
-        _loading = false;
+        _groupNames   = {};
+        _loading      = false;
       });
       _showSnack(e.message, isError: true);
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _transactions = [];
-        _loading = false;
+        _loading      = false;
       });
-      _showSnack('Não foi possível carregar as transações. Tente novamente.',
-          isError: true);
+      _showSnack(
+        'Não foi possível carregar as transações. Tente novamente.',
+        isError: true,
+      );
     }
   }
 
@@ -83,7 +85,8 @@ class _TransactionListViewState extends State<TransactionListView> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? const Color(0xFF1B1B1B) : _TxColors.surface,
+        backgroundColor:
+            isError ? const Color(0xFF1B1B1B) : _TxColors.surface,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -97,58 +100,6 @@ class _TransactionListViewState extends State<TransactionListView> {
     );
   }
 
-  Future<void> _simulateNewTransaction() async {
-    try {
-      final groups = await _storage.getGroups();
-      if (groups.isEmpty) {
-        _showSnack(
-          'Crie um grupo na tela inicial antes de simular uma transação.',
-          isError: true,
-        );
-        return;
-      }
-
-      final GroupModel target = _pickGroupForSimulation(groups);
-      final bump = DateTime.now().second % 7 * 12.5;
-
-      final saveResult = await _storage.saveContribution(
-        userId: widget.user.id,
-        groupId: target.id,
-        amount: 50 + bump,
-        goal: 200,
-      );
-
-      if (!mounted) return;
-      if (saveResult.goalJustReached) {
-        await showGoalReachedDialog(context); // função de conveniência
-      }
-      if (!mounted) return;
-      _showSnack('Transação simulada salva com sucesso.');
-      await _loadTransactions();
-    } on LocalStorageException catch (e) {
-      if (!mounted) return;
-      _showSnack(e.message, isError: true);
-    } catch (_) {
-      if (!mounted) return;
-      _showSnack(
-        'Algo inesperado ao salvar. Verifique os dados e tente de novo.',
-        isError: true,
-      );
-    }
-  }
-
-  /// Escolhe um grupo que já tenha contribuição no mês atual; senão o primeiro.
-  GroupModel _pickGroupForSimulation(List<GroupModel> groups) {
-    final month = ContributionModel.currentMonth(); // chamada estática correta
-    for (final g in groups) {
-      final has = _transactions.any(
-        (t) => t.groupId == g.id && t.month == month,
-      );
-      if (has) return g;
-    }
-    return groups.first;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -158,8 +109,12 @@ class _TransactionListViewState extends State<TransactionListView> {
         elevation: 0,
         foregroundColor: Colors.white,
         title: const Text(
-          'Transações',
+          'Extrato',
           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -173,33 +128,25 @@ class _TransactionListViewState extends State<TransactionListView> {
                 ? _buildEmptyState()
                 : _buildList(),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _simulateNewTransaction,
-        backgroundColor: _TxColors.accent,
-        foregroundColor: Colors.black,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Simular transação',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
     );
   }
 
   Widget _buildLoading() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 36,
             height: 36,
             child: CircularProgressIndicator(
                 color: _TxColors.accent, strokeWidth: 2.5),
           ),
-          const SizedBox(height: 20),
-          const Text('Carregando transações…',
-              style: TextStyle(color: _TxColors.textSoft, fontSize: 14)),
+          SizedBox(height: 20),
+          Text(
+            'Carregando extrato…',
+            style: TextStyle(color: _TxColors.textSoft, fontSize: 14),
+          ),
         ],
       ),
     );
@@ -227,14 +174,16 @@ class _TransactionListViewState extends State<TransactionListView> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Nenhuma transação',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700)),
+            const Text(
+              'Nenhuma contribuição ainda',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
             const Text(
-              'Quando você registrar contribuições nos grupos,\nelas aparecerão aqui.\nUse o botão para simular uma transação.',
+              'Quando você registrar contribuições\nnos grupos, elas aparecerão aqui.',
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: _TxColors.textMuted, fontSize: 14, height: 1.6),
@@ -252,11 +201,11 @@ class _TransactionListViewState extends State<TransactionListView> {
       onRefresh: _loadTransactions,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
         itemCount: _transactions.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
-          final tx = _transactions[index];
+          final tx        = _transactions[index];
           final groupName = _groupNames[tx.groupId] ?? 'Grupo';
           return _TransactionTile(contribution: tx, groupName: groupName);
         },
@@ -265,6 +214,7 @@ class _TransactionListViewState extends State<TransactionListView> {
   }
 }
 
+// ── Tile de contribuição ──────────────────────────────────────────────────────
 class _TransactionTile extends StatelessWidget {
   const _TransactionTile({
     required this.contribution,
@@ -274,63 +224,121 @@ class _TransactionTile extends StatelessWidget {
   final ContributionModel contribution;
   final String groupName;
 
-  String _money(double v) => 'R\$ ${v.toStringAsFixed(2)}';
+  String _money(double v) => 'R\$ ${v.toStringAsFixed(2).replaceAll('.', ',')}';
 
   @override
   Widget build(BuildContext context) {
+    final reached = contribution.progress >= 1.0;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: _TxColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _TxColors.border),
+        border: Border.all(
+          color: reached
+              ? const Color(0xFF00E676).withValues(alpha: 0.25)
+              : _TxColors.border,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Ícone
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
               color: _TxColors.accentDim.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: _TxColors.accent.withValues(alpha: 0.25)),
+              border: Border.all(
+                  color: _TxColors.accent.withValues(alpha: 0.25)),
             ),
             child: const Icon(Icons.trending_up_rounded,
                 color: _TxColors.accent, size: 22),
           ),
           const SizedBox(width: 14),
+
+          // Conteúdo
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(groupName,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15)),
-                const SizedBox(height: 4),
-                Text(contribution.month,
-                    style: const TextStyle(
-                        color: _TxColors.textMuted, fontSize: 12)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        groupName,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (reached)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E676)
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          '🎯 meta',
+                          style: TextStyle(
+                              color: Color(0xFF00E676),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  contribution.currentMonthLabel,
+                  style: const TextStyle(
+                      color: _TxColors.textMuted, fontSize: 12),
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Text(_money(contribution.amount),
-                        style: const TextStyle(
-                            color: _TxColors.accent,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16)),
-                    Text('  ·  meta ${_money(contribution.goal)}',
-                        style: const TextStyle(
-                            color: _TxColors.textSoft, fontSize: 13)),
+                    Text(
+                      _money(contribution.amount),
+                      style: const TextStyle(
+                          color: _TxColors.accent,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16),
+                    ),
+                    Text(
+                      '  ·  meta ${_money(contribution.goal)}',
+                      style: const TextStyle(
+                          color: _TxColors.textSoft, fontSize: 13),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text('Progresso: ${contribution.progressLabel}',
-                    style: const TextStyle(
-                        color: _TxColors.textMuted, fontSize: 12)),
+                // Barra de progresso
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: contribution.progress.clamp(0.0, 1.0),
+                    minHeight: 4,
+                    backgroundColor: const Color(0xFF222222),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      reached
+                          ? const Color(0xFF00E676)
+                          : _TxColors.accent,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Progresso: ${contribution.progressLabel}',
+                  style: const TextStyle(
+                      color: _TxColors.textMuted, fontSize: 11),
+                ),
               ],
             ),
           ),

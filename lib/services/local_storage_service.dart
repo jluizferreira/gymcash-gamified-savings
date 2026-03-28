@@ -7,12 +7,13 @@ import '../models/contribution_save_result.dart';
 import '../models/group_model.dart';
 import '../models/monthly_result_model.dart';
 import '../models/user_model.dart';
+import '../utils/id_generator.dart';
 
 class LocalStorageService {
   // ── Chaves ────────────────────────────────────────────────────────────────
-  static const _keyUser          = 'user';
-  static const _keyContributions = 'contributions';
-  static const _keyGroups        = 'groups';
+  static const _keyUser           = 'user';
+  static const _keyContributions  = 'contributions';
+  static const _keyGroups         = 'groups';
   static const _keyMonthlyResults = 'monthly_results';
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -58,7 +59,7 @@ class LocalStorageService {
     required String userId,
     required String groupId,
   }) async {
-    final all = await getContributions();
+    final all   = await getContributions();
     final month = _currentMonth();
     try {
       return all.firstWhere(
@@ -86,14 +87,14 @@ class LocalStorageService {
     required double goal,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs    = await SharedPreferences.getInstance();
       final monthKey = _currentMonth();
-      final all = await getContributions();
+      final all      = await getContributions();
 
       final index = all.indexWhere((c) =>
-          c.userId == userId &&
+          c.userId  == userId &&
           c.groupId == groupId &&
-          c.month == monthKey);
+          c.month   == monthKey);
 
       bool goalJustReached = false;
       ContributionModel contribution;
@@ -104,20 +105,20 @@ class LocalStorageService {
           goalJustReached = true;
         }
         contribution = existing.copyWith(
-          amount: amount,
-          goal: goal,
-          isGoalNotified: goalJustReached ? true : existing.isGoalNotified,
+          amount:          amount,
+          goal:            goal,
+          isGoalNotified:  goalJustReached ? true : existing.isGoalNotified,
         );
         all[index] = contribution;
       } else {
         goalJustReached = amount >= goal && goal > 0;
         contribution = ContributionModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          userId: userId,
-          groupId: groupId,
-          amount: amount,
-          goal: goal,
-          month: monthKey,
+          id:             IdGenerator.newId(),
+          userId:         userId,
+          groupId:        groupId,
+          amount:         amount,
+          goal:           goal,
+          month:          monthKey,
           isGoalNotified: goalJustReached,
         );
         all.add(contribution);
@@ -127,10 +128,12 @@ class LocalStorageService {
         _keyContributions,
         jsonEncode(all.map((e) => e.toJson()).toList()),
       );
-      if (!ok) throw const LocalStorageException('Erro ao persistir contribuição.');
+      if (!ok) {
+        throw const LocalStorageException('Erro ao persistir contribuição.');
+      }
 
       return ContributionSaveResult(
-        contribution: contribution,
+        contribution:    contribution,
         goalJustReached: goalJustReached,
       );
     } on LocalStorageException {
@@ -148,7 +151,7 @@ class LocalStorageService {
         .fold<double>(0.0, (sum, c) => sum + c.amount);
   }
 
-  /// Alias usado por algumas telas — equivalente a [getTotalAccumulated].
+  /// Alias mantido para compatibilidade com telas existentes.
   Future<double> getTotalAccumulatedAmount(String userId) =>
       getTotalAccumulated(userId);
 
@@ -180,9 +183,9 @@ class LocalStorageService {
     required UserModel creator,
   }) async {
     final groups = await getGroups();
-    final group = GroupModel(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      name: name.trim(),
+    final group  = GroupModel(
+      id:      IdGenerator.newId(),
+      name:    name.trim(),
       members: [creator],
     );
     groups.add(group);
@@ -192,11 +195,11 @@ class LocalStorageService {
 
   Future<GroupModel> addMember(String groupId, String memberName) async {
     final groups = await getGroups();
-    final idx = groups.indexWhere((g) => g.id == groupId);
+    final idx    = groups.indexWhere((g) => g.id == groupId);
     if (idx == -1) throw const LocalStorageException('Grupo não encontrado.');
 
     final newMember = UserModel(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      id:   IdGenerator.newId(),
       name: memberName.trim(),
     );
     final updated = groups[idx].copyWith(
@@ -209,7 +212,7 @@ class LocalStorageService {
 
   Future<void> removeMember(String groupId, String memberId) async {
     final groups = await getGroups();
-    final idx = groups.indexWhere((g) => g.id == groupId);
+    final idx    = groups.indexWhere((g) => g.id == groupId);
     if (idx == -1) return;
 
     final updated = groups[idx].copyWith(
@@ -221,11 +224,11 @@ class LocalStorageService {
 
   Future<GroupModel> renameGroup(String groupId, String newName) async {
     final groups = await getGroups();
-    final idx = groups.indexWhere((g) => g.id == groupId);
+    final idx    = groups.indexWhere((g) => g.id == groupId);
     if (idx == -1) throw const LocalStorageException('Grupo não encontrado.');
 
     final updated = groups[idx].copyWith(name: newName.trim());
-    groups[idx] = updated;
+    groups[idx]   = updated;
     await _saveGroups(groups);
     return updated;
   }
@@ -242,10 +245,10 @@ class LocalStorageService {
 
   Future<List<MonthlyResultModel>> getMonthlyResults({String? groupId}) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_keyMonthlyResults);
+    final raw   = prefs.getString(_keyMonthlyResults);
     if (raw == null || raw.isEmpty) return [];
     final list = jsonDecode(raw) as List<dynamic>;
-    final all = list
+    final all  = list
         .map((e) => MonthlyResultModel.fromJson(e as Map<String, dynamic>))
         .toList();
     if (groupId != null) {
@@ -256,9 +259,9 @@ class LocalStorageService {
 
   Future<void> saveMonthlyResult(MonthlyResultModel result) async {
     final prefs = await SharedPreferences.getInstance();
-    final all = await getMonthlyResults();
+    final all   = await getMonthlyResults();
 
-    // Evita duplicatas: remove resultado anterior do mesmo grupo/mês
+    // Idempotência: remove resultado anterior do mesmo grupo/mês antes de inserir
     all.removeWhere(
       (r) => r.groupId == result.groupId && r.month == result.month,
     );
@@ -268,7 +271,9 @@ class LocalStorageService {
       _keyMonthlyResults,
       jsonEncode(all.map((r) => r.toJson()).toList()),
     );
-    if (!ok) throw const LocalStorageException('Erro ao salvar resultado mensal.');
+    if (!ok) {
+      throw const LocalStorageException('Erro ao salvar resultado mensal.');
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════

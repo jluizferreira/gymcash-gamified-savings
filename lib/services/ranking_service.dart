@@ -7,6 +7,7 @@ import '../models/contribution_model.dart';
 import '../models/group_model.dart';
 import '../models/monthly_result_model.dart';
 import '../models/ranking_entry.dart';
+import '../utils/id_generator.dart';
 import 'local_storage_service.dart';
 
 class RankingService {
@@ -17,11 +18,11 @@ class RankingService {
   // ── Verifica e fecha meses pendentes ──────────────────────────────────────
   // Retorna true se fechou algum mês (para forçar reload na UI).
   Future<bool> checkAndCloseMonths(GroupModel group) async {
-    final currentMonth = _currentMonth();
-    final existing = await _storage.getMonthlyResults(groupId: group.id);
-    final closedMonths = existing.map((r) => r.month).toSet();
+    final currentMonth  = _currentMonth();
+    final existing      = await _storage.getMonthlyResults(groupId: group.id);
+    final closedMonths  = existing.map((r) => r.month).toSet();
 
-    final allContribs = await _storage.getContributions(); // sem parâmetro
+    final allContribs   = await _storage.getContributions();
     final groupContribs =
         allContribs.where((c) => c.groupId == group.id).toList();
 
@@ -35,7 +36,8 @@ class RankingService {
     if (monthsToClose.isEmpty) return false;
 
     for (final month in monthsToClose) {
-      await _closeMonth(group: group, month: month, contribs: groupContribs);
+      await _closeMonth(
+          group: group, month: month, contribs: groupContribs);
     }
     return true;
   }
@@ -68,33 +70,33 @@ class RankingService {
 
     final snapshots = entries.asMap().entries.map((e) {
       return RankingSnapshot(
-        userId: e.value.member.id,
+        userId:   e.value.member.id,
         userName: e.value.member.name,
         progress: e.value.progress,
         position: e.key + 1,
       );
     }).toList();
 
-    final winner = entries.isNotEmpty && entries.first.contribution != null
-        ? entries.first
-        : null;
+    // Vencedor deve ter contribuído com amount > 0
+    final winner =
+        entries.isNotEmpty && (entries.first.contribution?.amount ?? 0) > 0
+            ? entries.first
+            : null;
 
     final result = MonthlyResultModel(
-      id: _newId(),
-      groupId: group.id,
-      month: month,
-      ranking: snapshots,
-      winnerId: winner?.member.id,
+      id:         IdGenerator.newId(),
+      groupId:    group.id,
+      month:      month,
+      ranking:    snapshots,
+      winnerId:   winner?.member.id,
       winnerName: winner?.member.name,
     );
 
-    await _storage.saveMonthlyResult(result); // método agora existe
+    await _storage.saveMonthlyResult(result);
   }
 
   String _currentMonth() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}';
   }
-
-  String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
 }

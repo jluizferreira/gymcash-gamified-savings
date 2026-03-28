@@ -31,10 +31,10 @@ class AddContributionScreen extends StatefulWidget {
 
 class _AddContributionScreenState extends State<AddContributionScreen> {
   final _amountController = TextEditingController();
-  final _goalController   = TextEditingController();
-  final _formKey          = GlobalKey<FormState>();
-  final _storage          = LocalStorageService();
-  bool _saving            = false;
+  final _goalController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _storage = LocalStorageService();
+  bool _saving = false;
 
   bool get _isEditing => widget.existing != null;
 
@@ -43,10 +43,8 @@ class _AddContributionScreenState extends State<AddContributionScreen> {
     super.initState();
     // Pré-preenche no modo edição
     if (_isEditing) {
-      _amountController.text =
-          widget.existing!.amount.toStringAsFixed(2);
-      _goalController.text =
-          widget.existing!.goal.toStringAsFixed(2);
+      _amountController.text = widget.existing!.amount.toStringAsFixed(2);
+      _goalController.text = widget.existing!.goal.toStringAsFixed(2);
     }
   }
 
@@ -55,10 +53,10 @@ class _AddContributionScreenState extends State<AddContributionScreen> {
     setState(() => _saving = true);
 
     try {
-      final amount = double.parse(
-          _amountController.text.trim().replaceAll(',', '.'));
-      final goal = double.parse(
-          _goalController.text.trim().replaceAll(',', '.'));
+      final amount =
+          double.parse(_amountController.text.trim().replaceAll(',', '.'));
+      final goal =
+          double.parse(_goalController.text.trim().replaceAll(',', '.'));
 
       final saveResult = await _storage.saveContribution(
         userId: widget.currentUser.id,
@@ -79,8 +77,8 @@ class _AddContributionScreenState extends State<AddContributionScreen> {
       }
 
       await StreakService(_storage).calculateStreak(widget.currentUser.id);
-      final newlyUnlocked =
-          await AchievementService(_storage).checkAndUnlock(widget.currentUser.id);
+      final newlyUnlocked = await AchievementService(_storage)
+          .checkAndUnlock(widget.currentUser.id);
 
       if (!mounted) return;
       if (newlyUnlocked.isNotEmpty) {
@@ -154,8 +152,8 @@ class _AddContributionScreenState extends State<AddContributionScreen> {
               children: [
                 // Mês de referência
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFF161616),
                     borderRadius: BorderRadius.circular(10),
@@ -176,7 +174,7 @@ class _AddContributionScreenState extends State<AddContributionScreen> {
                 const SizedBox(height: 28),
 
                 // Campo: valor guardado
-                _FieldLabel(label: 'Valor guardado este mês'),
+                const _FieldLabel(label: 'Valor guardado este mês'),
                 const SizedBox(height: 8),
                 _CurrencyField(
                   controller: _amountController,
@@ -197,7 +195,7 @@ class _AddContributionScreenState extends State<AddContributionScreen> {
                 const SizedBox(height: 20),
 
                 // Campo: meta
-                _FieldLabel(label: 'Meta individual do mês'),
+                const _FieldLabel(label: 'Meta individual do mês'),
                 const SizedBox(height: 8),
                 _CurrencyField(
                   controller: _goalController,
@@ -234,7 +232,8 @@ class _AddContributionScreenState extends State<AddContributionScreen> {
                     ),
                     child: _saving
                         ? const SizedBox(
-                            width: 22, height: 22,
+                            width: 22,
+                            height: 22,
                             child: CircularProgressIndicator(
                                 color: Colors.black, strokeWidth: 2.5))
                         : Text(_isEditing ? 'Salvar alterações' : 'Registrar',
@@ -259,9 +258,7 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(label,
       style: const TextStyle(
-          color: Color(0xFF888888),
-          fontSize: 13,
-          fontWeight: FontWeight.w500));
+          color: Color(0xFF888888), fontSize: 13, fontWeight: FontWeight.w500));
 }
 
 // ── Input numérico com formatação ─────────────────────────────────────────────
@@ -280,13 +277,12 @@ class _CurrencyField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      keyboardType:
-          const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
       ],
-      style: const TextStyle(color: Colors.white, fontSize: 18,
-          fontWeight: FontWeight.w600),
+      style: const TextStyle(
+          color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFF444444)),
@@ -302,16 +298,13 @@ class _CurrencyField extends StatelessWidget {
             borderSide: const BorderSide(color: Color(0xFF222222))),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: Color(0xFF00E676), width: 2)),
+            borderSide: const BorderSide(color: Color(0xFF00E676), width: 2)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: Colors.redAccent, width: 2)),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 2)),
         focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: Colors.redAccent, width: 2)),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 2)),
       ),
       validator: validator,
     );
